@@ -182,13 +182,8 @@ fn concat_and_hash(values: Vec<Vec<u8>>) -> Result<Vec<u8>, io::Error> {
 }
 
 fn calculate_merkle(data: &[Vec<u8>]) -> Result<Vec<u8>, io::Error> {
-    let mut temp = data.to_vec();
-    if temp.len() % 2 == 1 {
-        let last = temp.last().unwrap().to_vec();
-        temp.push(last);
-    }
     let mut hashes: Vec<Vec<u8>> = Vec::new();
-    for value in temp {
+    for value in data {
         hashes.push(double_hash(value.as_slice())?);
     }
     concat_and_hash(hashes)
