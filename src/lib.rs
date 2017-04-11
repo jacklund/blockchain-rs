@@ -1,4 +1,4 @@
-#![feature(box_syntax)] 
+#![feature(box_syntax)]
 
 extern crate byteorder;
 extern crate merkle;
@@ -26,9 +26,21 @@ pub struct BlockHeader {
     nonce: u32,
 }
 
+fn single_hash(data: &[u8]) -> Result<Vec<u8>, io::Error> {
+    let digest = ring::digest::digest(&ring::digest::SHA256, data);
+    let mut buffer: Vec<u8> = Vec::new();
+    digest.as_ref().read_to_end(&mut buffer)?;
+
+    Ok(buffer)
+}
+
+fn double_hash(data: &[u8]) -> Result<Vec<u8>, io::Error> {
+    Ok(single_hash(single_hash(data)?.as_slice())?)
+}
+
 impl BlockHeader {
-    pub fn hash(&self) -> Result<ring::digest::Digest, io::Error> {
-        Ok(ring::digest::digest(&ring::digest::SHA256, self.serialize()?.as_slice()))
+    pub fn hash(&self) -> Result<Vec<u8>, io::Error> {
+        Ok(double_hash(self.serialize()?.as_slice())?)
     }
 }
 
@@ -71,8 +83,12 @@ pub struct Block<T: Serializable + Clone> {
     data: Vec<T>,
 }
 
-impl <T: Serializable + Clone> Block<T> {
-    pub fn new(version: u32, previous_hash: Vec<u8>, values: &[T], bits: u32) -> Result<Block<T>, io::Error> {
+impl<T: Serializable + Clone> Block<T> {
+    pub fn new(version: u32,
+               previous_hash: Vec<u8>,
+               values: &[T],
+               bits: u32)
+               -> Result<Block<T>, io::Error> {
         let now = time::now().to_timespec().sec as u32;
 
         let mut data: Vec<Vec<u8>> = Vec::new();
@@ -98,12 +114,12 @@ impl <T: Serializable + Clone> Block<T> {
         self.header.nonce = nonce;
     }
 
-    pub fn header_hash(&self) -> Result<ring::digest::Digest, io::Error> {
+    pub fn header_hash(&self) -> Result<Vec<u8>, io::Error> {
         self.header.hash()
     }
 }
 
-impl <T: Serializable + Clone> Serializable for Block<T> {
+impl<T: Serializable + Clone> Serializable for Block<T> {
     fn serialize(&self) -> Result<Vec<u8>, io::Error> {
         let mut buffer: Vec<u8> = Vec::new();
         buffer.write_u32::<LittleEndian>(BLOCK_MAGIC_NUMBER)?;
@@ -134,8 +150,13 @@ impl <T: Serializable + Clone> Serializable for Block<T> {
         data.read_exact(buffer.as_mut_slice())?;
 
         let header = BlockHeader::deserialize(buffer.as_mut_slice())?;
+        let data_size = read_compact_size(buffer.as_slice())?;
+        let mut data: Vec<T> = Vec::new();
+        for _ in 0..data_size {
+            data.push(T::deserialize(buffer.as_mut_slice())?);
+        }
 
-        Ok(Block{
+        Ok(Block {
             header: header,
             data: Vec::new(),
         })
@@ -164,9 +185,20 @@ fn compact_size_of(value: u64) -> Result<Vec<u8>, io::Error> {
     Ok(buffer)
 }
 
+fn read_compact_size(mut buffer: &[u8]) -> Result<u64, io::Error> {
+    let first_byte = buffer.read_u8()?;
+    let value: u64 = match first_byte {
+        0xfd => buffer.read_u16::<LittleEndian>()? as u64,
+        0xfe => buffer.read_u32::<LittleEndian>()? as u64,
+        0xff => buffer.read_u64::<LittleEndian>()?,
+        _ => first_byte as u64,
+    };
+
+    Ok(value)
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {
-    }
+    fn it_works() {}
 }
