@@ -6,7 +6,6 @@ extern crate ring;
 extern crate time;
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use ring::digest::SHA256;
 use std::io::{self, Read, Write};
 
 const BLOCK_MAGIC_NUMBER: u32 = 0xD9B4BEF9;
@@ -95,7 +94,7 @@ impl<T: Serializable + Clone> Block<T> {
         for value in values {
             data.push(value.serialize()?);
         }
-        let merkle = calculate_merkle(&data);
+        let merkle = calculate_merkle(&data)?;
 
         Ok(Block {
             header: BlockHeader {
@@ -163,8 +162,36 @@ impl<T: Serializable + Clone> Serializable for Block<T> {
     }
 }
 
-fn calculate_merkle(data: &[Vec<u8>]) -> Vec<u8> {
-    merkle::MerkleTree::from_vec(&SHA256, data.to_vec().clone()).root_hash().clone()
+fn concat_and_hash(values: Vec<Vec<u8>>) -> Result<Vec<u8>, io::Error> {
+    let mut hashes: Vec<Vec<u8>> = Vec::new();
+    for chunk in values.chunks(2) {
+        let mut first = chunk[0].clone();
+        if chunk.len() == 2 {
+            first.extend(chunk[1].iter());
+        } else {
+            first.extend(chunk[0].iter());
+        }
+        hashes.push(double_hash(first.as_slice())?);
+    }
+
+    if hashes.len() == 1 {
+        Ok(hashes[0].clone())
+    } else {
+        concat_and_hash(hashes)
+    }
+}
+
+fn calculate_merkle(data: &[Vec<u8>]) -> Result<Vec<u8>, io::Error> {
+    let mut temp = data.to_vec();
+    if temp.len() % 2 == 1 {
+        let last = temp.last().unwrap().to_vec();
+        temp.push(last);
+    }
+    let mut hashes: Vec<Vec<u8>> = Vec::new();
+    for value in temp {
+        hashes.push(double_hash(value.as_slice())?);
+    }
+    concat_and_hash(hashes)
 }
 
 fn compact_size_of(value: u64) -> Result<Vec<u8>, io::Error> {
