@@ -85,3 +85,21 @@ impl Serializable for VarInt {
         Ok(VarInt(value))
     }
 }
+
+mod test {
+    use super::{VarInt, Serializable};
+
+    #[test]
+    fn test_varint() {
+        let data = vec![(212, vec![0xd4]),
+                        (515, vec![0xfd, 0x03, 0x02]),
+                        (100000, vec![0xfe, 0xa0, 0x86, 0x01, 0x00]),
+                        (10000000000, vec![0xff, 0x00, 0xe4, 0x0b, 0x54, 0x02, 0x00, 0x00, 0x00])];
+        for item in data {
+            let serialized = VarInt(item.0).serialize().unwrap();
+            assert_eq!(item.1, serialized);
+            let VarInt(value) = VarInt::deserialize(&item.1).unwrap();
+            assert_eq!(item.0, value);
+        }
+    }
+}
