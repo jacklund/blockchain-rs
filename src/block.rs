@@ -102,7 +102,7 @@ impl<T: Serializable + Clone> Serializable for Block<T> {
         buffer.write_u32::<LittleEndian>(BLOCK_MAGIC_NUMBER)?;
         buffer.write_u32::<LittleEndian>(0)?;
         buffer.write_all(self.header.serialize()?.as_ref())?;
-        buffer.write_all(VarInt(self.data.len() as u64).serialize()?.as_slice());
+        buffer.write_all(VarInt(self.data.len() as u64).serialize()?.as_slice())?;
         for item in self.data.iter() {
             buffer.write_all(item.serialize()?.as_ref())?;
         }

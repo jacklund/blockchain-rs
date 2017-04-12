@@ -6,7 +6,7 @@ use std::io::{self, Read};
 pub trait Serializable: Sized {
     fn serialize(&self) -> Result<Vec<u8>, io::Error>;
 
-    fn deserialize(mut buffer: &[u8]) -> Result<Self, io::Error>;
+    fn deserialize(buffer: &[u8]) -> Result<Self, io::Error>;
 }
 
 pub fn single_hash(data: &[u8]) -> Result<Vec<u8>, io::Error> {

@@ -16,7 +16,7 @@ impl Serializable for Input {
         buffer.write_u32::<LittleEndian>(self.prev_txout_index)?;
         buffer.write_all(VarInt(self.txin_script.len() as u64).serialize()?.as_slice())?;
         buffer.write_all(self.txin_script.as_slice())?;
-        buffer.write_u32::<LittleEndian>(self.sequence_no);
+        buffer.write_u32::<LittleEndian>(self.sequence_no)?;
 
         Ok(buffer)
     }
@@ -47,7 +47,7 @@ pub struct Output {
 impl Serializable for Output {
     fn serialize(&self) -> Result<Vec<u8>, io::Error> {
         let mut buffer: Vec<u8> = Vec::new();
-        buffer.write_u64::<LittleEndian>(self.value);
+        buffer.write_u64::<LittleEndian>(self.value)?;
         buffer.write_all(VarInt(self.txout_script.len() as u64).serialize()?.as_slice())?;
         buffer.write_all(self.txout_script.as_slice())?;
 
