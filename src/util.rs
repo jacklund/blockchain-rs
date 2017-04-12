@@ -21,7 +21,7 @@ pub fn double_hash(data: &[u8]) -> Result<Vec<u8>, io::Error> {
     Ok(single_hash(single_hash(data)?.as_slice())?)
 }
 
-fn concat_and_hash(values: Vec<Vec<u8>>) -> Result<Vec<u8>, io::Error> {
+fn concat_and_hash(values: &[Vec<u8>]) -> Result<Vec<u8>, io::Error> {
     let mut hashes: Vec<Vec<u8>> = Vec::new();
     for chunk in values.chunks(2) {
         let mut first = chunk[0].clone();
@@ -36,7 +36,7 @@ fn concat_and_hash(values: Vec<Vec<u8>>) -> Result<Vec<u8>, io::Error> {
     if hashes.len() == 1 {
         Ok(hashes[0].clone())
     } else {
-        concat_and_hash(hashes)
+        concat_and_hash(&hashes)
     }
 }
 
@@ -48,7 +48,7 @@ pub fn calculate_merkle(data: &[Vec<u8>]) -> Result<Vec<u8>, io::Error> {
     for value in data {
         hashes.push(double_hash(value.as_slice())?);
     }
-    concat_and_hash(hashes)
+    concat_and_hash(&hashes)
 }
 
 pub struct VarInt(pub u64);

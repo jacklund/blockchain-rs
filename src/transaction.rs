@@ -78,11 +78,11 @@ impl Serializable for Transaction {
         let mut buffer: Vec<u8> = Vec::new();
         buffer.write_u32::<LittleEndian>(self.version)?;
         buffer.write_all(VarInt(self.inputs.len() as u64).serialize()?.as_slice())?;
-        for input in self.inputs.iter() {
+        for input in &self.inputs {
             buffer.write_all(input.serialize()?.as_slice())?;
         }
         buffer.write_all(VarInt(self.outputs.len() as u64).serialize()?.as_slice())?;
-        for output in self.outputs.iter() {
+        for output in &self.outputs {
             buffer.write_all(output.serialize()?.as_slice())?;
         }
         buffer.write_u32::<LittleEndian>(self.lock_time)?;

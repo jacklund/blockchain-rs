@@ -103,13 +103,13 @@ impl<T: Serializable + Clone> Serializable for Block<T> {
         buffer.write_u32::<LittleEndian>(0)?;
         buffer.write_all(self.header.serialize()?.as_ref())?;
         buffer.write_all(VarInt(self.data.len() as u64).serialize()?.as_slice())?;
-        for item in self.data.iter() {
+        for item in &self.data {
             buffer.write_all(item.serialize()?.as_ref())?;
         }
 
         let size: u32 = buffer.len() as u32 - 8;
         {
-            let mut slice = buffer.get_mut(4..8).unwrap();
+            let mut slice = &mut buffer[4..8];
             slice.write_u32::<LittleEndian>(size)?;
         }
 
