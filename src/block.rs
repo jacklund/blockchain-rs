@@ -34,24 +34,24 @@ impl Serializable for BlockHeader {
         Ok(buffer)
     }
 
-    fn deserialize(mut buffer: &[u8]) -> Result<BlockHeader, io::Error> {
-        let version = buffer.read_u32::<LittleEndian>()?;
+    fn deserialize<R: Read>(reader: &mut R) -> Result<BlockHeader, io::Error> {
+        let version = reader.read_u32::<LittleEndian>()?;
         let mut previous_hash = vec![0; 32];
-        buffer.read_exact(previous_hash.as_mut_slice())?;
+        reader.read_exact(previous_hash.as_mut_slice())?;
         let mut merkle_root_hash = vec![0; 32];
-        buffer.read_exact(merkle_root_hash.as_mut_slice())?;
-        let timestamp = buffer.read_u32::<LittleEndian>()?;
-        let bits = buffer.read_u32::<LittleEndian>()?;
-        let nonce = buffer.read_u32::<LittleEndian>()?;
+        reader.read_exact(merkle_root_hash.as_mut_slice())?;
+        let timestamp = reader.read_u32::<LittleEndian>()?;
+        let bits = reader.read_u32::<LittleEndian>()?;
+        let nonce = reader.read_u32::<LittleEndian>()?;
 
         Ok(BlockHeader {
-            version: version,
-            previous_hash: previous_hash,
-            merkle_root_hash: merkle_root_hash,
-            timestamp: timestamp,
-            bits: bits,
-            nonce: nonce,
-        })
+               version: version,
+               previous_hash: previous_hash,
+               merkle_root_hash: merkle_root_hash,
+               timestamp: timestamp,
+               bits: bits,
+               nonce: nonce,
+           })
     }
 }
 
@@ -75,16 +75,16 @@ impl<T: Serializable + Clone> Block<T> {
         let merkle = calculate_merkle(&data)?;
 
         Ok(Block {
-            header: BlockHeader {
-                version: version,
-                previous_hash: previous_hash,
-                merkle_root_hash: merkle,
-                timestamp: now,
-                bits: bits,
-                nonce: 0,
-            },
-            data: values.to_vec(),
-        })
+               header: BlockHeader {
+                   version: version,
+                   previous_hash: previous_hash,
+                   merkle_root_hash: merkle,
+                   timestamp: now,
+                   bits: bits,
+                   nonce: 0,
+               },
+               data: values.to_vec(),
+           })
     }
 
     pub fn set_nonce(&mut self, nonce: u32) {
@@ -102,7 +102,8 @@ impl<T: Serializable + Clone> Serializable for Block<T> {
         buffer.write_u32::<LittleEndian>(BLOCK_MAGIC_NUMBER)?;
         buffer.write_u32::<LittleEndian>(0)?;
         buffer.write_all(self.header.serialize()?.as_ref())?;
-        buffer.write_all(VarInt(self.data.len() as u64).serialize()?.as_slice())?;
+        buffer
+            .write_all(VarInt(self.data.len() as u64).serialize()?.as_slice())?;
         for item in &self.data {
             buffer.write_all(item.serialize()?.as_ref())?;
         }
@@ -116,26 +117,26 @@ impl<T: Serializable + Clone> Serializable for Block<T> {
         Ok(buffer)
     }
 
-    fn deserialize(mut data: &[u8]) -> Result<Block<T>, io::Error> {
-        let magic = data.read_u32::<LittleEndian>()?;
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Block<T>, io::Error> {
+        let magic = reader.read_u32::<LittleEndian>()?;
         if magic != BLOCK_MAGIC_NUMBER {
             // TODO: Replace with actual error
             panic!("Bad block header found: {:?}", magic);
         }
-        let size = data.read_u32::<LittleEndian>()?;
+        let size = reader.read_u32::<LittleEndian>()?;
         let mut buffer = vec![0; size as usize];
-        data.read_exact(buffer.as_mut_slice())?;
+        reader.read_exact(buffer.as_mut_slice())?;
 
-        let header = BlockHeader::deserialize(buffer.as_mut_slice())?;
-        let data_size = VarInt::deserialize(buffer.as_slice())?;
+        let header = BlockHeader::deserialize(&mut buffer.as_slice())?;
+        let data_size = VarInt::deserialize(&mut buffer.as_slice())?;
         let mut data: Vec<T> = Vec::new();
         for _ in 0..data_size.0 {
-            data.push(T::deserialize(buffer.as_mut_slice())?);
+            data.push(T::deserialize(&mut buffer.as_slice())?);
         }
 
         Ok(Block {
-            header: header,
-            data: Vec::new(),
-        })
+               header: header,
+               data: Vec::new(),
+           })
     }
 }

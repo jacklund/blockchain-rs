@@ -6,7 +6,7 @@ use std::io::{self, Read};
 pub trait Serializable: Sized {
     fn serialize(&self) -> Result<Vec<u8>, io::Error>;
 
-    fn deserialize(buffer: &[u8]) -> Result<Self, io::Error>;
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, io::Error>;
 }
 
 pub fn single_hash(data: &[u8]) -> Result<Vec<u8>, io::Error> {
@@ -73,12 +73,13 @@ impl Serializable for VarInt {
         Ok(buffer)
     }
 
-    fn deserialize(mut buffer: &[u8]) -> Result<Self, io::Error> {
-        let first_byte = buffer.read_u8()?;
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, io::Error> {
+        let first_byte = reader.read_u8()?;
+        println!("first byte = {:0x}", first_byte);
         let value: u64 = match first_byte {
-            0xfd => buffer.read_u16::<LittleEndian>()? as u64,
-            0xfe => buffer.read_u32::<LittleEndian>()? as u64,
-            0xff => buffer.read_u64::<LittleEndian>()?,
+            0xfd => reader.read_u16::<LittleEndian>()? as u64,
+            0xfe => reader.read_u32::<LittleEndian>()? as u64,
+            0xff => reader.read_u64::<LittleEndian>()?,
             _ => first_byte as u64,
         };
 
@@ -98,7 +99,7 @@ mod test {
         for item in data {
             let serialized = VarInt(item.0).serialize().unwrap();
             assert_eq!(item.1, serialized);
-            let VarInt(value) = VarInt::deserialize(&item.1).unwrap();
+            let VarInt(value) = VarInt::deserialize(&mut item.1.as_slice()).unwrap();
             assert_eq!(item.0, value);
         }
     }
